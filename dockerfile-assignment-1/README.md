@@ -33,3 +33,48 @@ No modifications to the app should be necessary, only edits to the Dockerfile in
 ## Bonus Extra Credit
 
 - This assignment will not have you setting up a complete image useful for local development, test, and prod. It's just meant to get you started with basic Dockerfile concepts and not focus too much on proper Node.js use in a container. **If you happen to be a Node.js Developer**, then after you get through more of this course, you should come back and use my [Node.js Docker Good Defaults](https://github.com/BretFisher/node-docker-good-defaults) sample project on GitHub to change this Dockerfile for better local development with more advanced topics.
+
+```yaml
+# node:6-alpine 이미지를 기반으로 새 Docker 이미지를 생성
+FROM node:6-alpine
+
+# 컨테이너가 실행될 때 3000번 포트를 외부에 노출
+EXPOSE 3000
+
+# 'tini' 설치
+RUN apk add --update tini
+
+# /usr/src/app 디렉토리를 생성합니다
+RUN mkdir -p /usr/src/app
+
+# 작업 디렉토리를 /usr/src/app으로 설정
+WORKDIR /usr/src/app
+
+# 호스트 시스템의 package.json 파일을 컨테이너의 /usr/src/app 디렉토리에 복사
+COPY package.json package.json
+
+# npm을 사용하여 의존성을 설치하고 캐시를 정리
+RUN npm install && npm cache clean
+
+# 현재 디렉토리(.)의 모든 파일을 컨테이너의 현재 작업 디렉토리(.)로 복사
+COPY . .
+
+
+# 컨테이너가 시작될 때 실행될 명령어
+# 'tini'를 사용하여 'node ./bin/www'를 실행
+CMD ["tini","--","node","./bin/www"]
+```
+
+#### COPY package.json package.json 명령의 사용 이유:
+
+1. 캐시 최적화: package.json 파일만 복사하고 npm install을 실행함으로써, 소스 코드의 다른 부분이 변경되어도 의존성 설치 단계를 캐시에서 재사용할 수 있습니다. package.json 파일이 변경되지 않으면 npm install 단계는 다시 실행되지 않습니다.
+
+2. 빌드 시간 단축: 이 방식은 빌드 시간을 줄이고, 불필요한 의존성 설치를 방지합니다.
+
+#### COPY . . 명령의 사용:
+
+전체 소스 코드 복사: 프로젝트의 나머지 파일들(소스 코드, 기타 리소스 등)이 필요한 경우, COPY . . 명령을 사용하여 전체 내용을 컨테이너에 복사합니다.
+
+결론:
+COPY package.json package.json는 의존성 관리를 위해 최적화된 단계로, COPY . .는 프로젝트의 전체 내용을 컨테이너에 복사합니다.
+COPY . . 명령어 자체만으로도 package.json을 포함한 모든 파일을 복사할 수 있지만, 캐시 효율성을 높이기 위해 package.json을 먼저 복사하는 것이 일반적인 관행입니다.
